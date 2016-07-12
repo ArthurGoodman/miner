@@ -2,8 +2,12 @@ TEMPLATE = app
 CONFIG += windows c++11
 QT += core gui widgets
 
-LIBS += -L../framework/release -L../neuro/release -lframework -lneuro -lgdi32 -lgdiplus
-INCLUDEPATH += ../framework ../neuro
+LIBS += -L../neuro/release -lneuro
+INCLUDEPATH += ../neuro
 
 SOURCES += \
-    main.cpp
+    main.cpp \
+    minerwindow.cpp
+
+HEADERS += \
+    minerwindow.h
