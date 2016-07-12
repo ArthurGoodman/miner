@@ -38,8 +38,8 @@ void MinerWindow::paintEvent(QPaintEvent *) {
 void MinerWindow::init() {
     icons.reserve(11);
 
-    for (uint i = 0; i < 11; i++)
-        icons.push_back(QImage("data/" + QString::number(i < 9 ? i : i == 9 ? 10 : 13) + ".bmp"));
+    for (int i = 0; i < 11; i++)
+        icons << QImage("data/" + QString::number(i * 3 + 1) + ".bmp");
 
     map.resize(fieldWidth);
 
@@ -67,13 +67,13 @@ std::vector<double> MinerWindow::processImage(const QImage &image) {
 void MinerWindow::trainNetwork() {
     std::vector<std::vector<double>> data;
 
-    for (uint i = 0; i < 15; i++)
+    for (uint i = 0; i < 33; i++)
         data.push_back(processImage(QImage("data/" + QString::number(i) + ".bmp")));
 
     std::vector<Network::Example> examples;
 
     for (uint i = 0; i < data.size(); i++)
-        examples.push_back(Network::Example(data[i], i < 9 ? i : i < 12 ? 9 : 10));
+        examples.push_back(Network::Example(data[i], i / 3));
 
     net = new Network({48 * 48 * 3, 11});
 
