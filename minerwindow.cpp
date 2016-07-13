@@ -27,6 +27,21 @@ void MinerWindow::keyPressEvent(QKeyEvent *e) {
     }
 }
 
+void MinerWindow::mousePressEvent(QMouseEvent *e) {
+    if (e->button() == Qt::LeftButton) {
+        SendMessage(hWnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(0, 0));
+        SendMessage(hWnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(0, 0));
+    } else if (e->button() == Qt::RightButton) {
+        SendMessage(hWnd, WM_RBUTTONDOWN, MK_LBUTTON, MAKELPARAM(0, 0));
+        SendMessage(hWnd, WM_RBUTTONUP, MK_LBUTTON, MAKELPARAM(0, 0));
+    }
+}
+
+void MinerWindow::mouseDoubleClickEvent(QMouseEvent *e) {
+    if (e->button() == Qt::LeftButton)
+        SendMessage(hWnd, WM_LBUTTONDBLCLK, MK_LBUTTON, MAKELPARAM(0, 0));
+}
+
 void MinerWindow::paintEvent(QPaintEvent *) {
     QPainter p(this);
 
@@ -36,6 +51,8 @@ void MinerWindow::paintEvent(QPaintEvent *) {
 }
 
 void MinerWindow::init() {
+    hWnd = FindWindow(L"Minesweeper", 0);
+
     icons.reserve(11);
 
     for (int i = 0; i < 11; i++)
@@ -67,29 +84,32 @@ std::vector<double> MinerWindow::processImage(const QImage &image) {
 void MinerWindow::trainNetwork() {
     std::vector<std::vector<double>> data;
 
-    for (uint i = 0; i < 33; i++)
-        data.push_back(processImage(QImage("data/" + QString::number(i) + ".bmp")));
+    for (uint i = 0; i < 36; i++)
+        data.push_back(processImage(QImage("data/" + QString::number(i) + ".bmp").scaled(trainWidth, trainHeight, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)));
 
     std::vector<Network::Example> examples;
 
     for (uint i = 0; i < data.size(); i++)
-        examples.push_back(Network::Example(data[i], i / 3));
+        examples.push_back(Network::Example(data[i], i < 33 ? i / 3 : 10));
 
-    net = new Network({48 * 48 * 3, 11});
+    net = new Network({trainWidth * trainHeight * 3, 24, 11});
 
     net->setLearningRate(0.01);
     net->setMomentum(0.1);
-    net->setL2Decay(0.001);
-    net->setMaxLoss(1e-4);
+    net->setL2Decay(0);
+    net->setMaxLoss(1e-2);
     net->setMaxEpochs(1000);
     net->setBatchSize(1);
-    // net->setVerbose(false);
+    net->setVerbose(false);
 
     net->train(examples);
 }
 
 void MinerWindow::takeScreenshot() {
-    field = QApplication::primaryScreen()->grabWindow((WId)FindWindow(L"Minesweeper", 0)).toImage();
+    field = QApplication::primaryScreen()->grabWindow((WId)hWnd).toImage();
+
+    if (field.isNull())
+        return;
 
     int left = field.width() * 0.05;
     int top = field.height() * 0.085;
@@ -105,10 +125,36 @@ void MinerWindow::takeScreenshot() {
 }
 
 void MinerWindow::recognize() {
+    if (field.isNull())
+        return;
+
     for (int i = 0; i < fieldWidth; i++)
         for (int j = 0; j < fieldHeight; j++) {
-            QImage icon = field.copy(i * iconWidth + 1, j * iconHeight + 1, iconWidth, iconHeight);
-            icon = icon.scaled(48, 48, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+
+            int xc = i * iconWidth + iconWidth / 2;
+            int yc = j * iconHeight + iconHeight / 2;
+
+            int x = xc;
+            int y = yc;
+
+            const static int threshold = 90;
+
+            while (true) {
+                QRgb rgb = field.pixel(x, yc);
+                if (qRed(rgb) <= threshold && qGreen(rgb) <= threshold && qBlue(rgb) <= threshold)
+                    break;
+                x--;
+            }
+
+            while (true) {
+                QRgb rgb = field.pixel(xc, y);
+                if (qRed(rgb) <= threshold && qGreen(rgb) <= threshold && qBlue(rgb) <= threshold)
+                    break;
+                y--;
+            }
+
+            QImage icon = field.copy(x + 1, y + 1, iconWidth - 2, iconHeight - 2).scaled(trainWidth, trainHeight, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+
             map[i][j] = net->predict(processImage(icon));
         }
 }
