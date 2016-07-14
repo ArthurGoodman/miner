@@ -47,5 +47,6 @@
         <file>data/o2.bmp</file>
         <file>data/o3.bmp</file>
         <file>data/o4.bmp</file>
+        <file>data/f4.bmp</file>
     </qresource>
 </RCC>

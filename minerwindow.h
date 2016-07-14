@@ -52,6 +52,7 @@ private:
     std::vector<double> processImage(const QImage &image);
     void trainNetwork();
     void detectField();
+    void detectFieldDimensions();
     void takeScreenshot();
     void recognize();
     void process();

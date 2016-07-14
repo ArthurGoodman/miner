@@ -157,13 +157,43 @@ void MinerWindow::trainNetwork() {
 }
 
 void MinerWindow::detectField() {
-    leftDelta = 0.05;
-    topDelta = 0.085;
-    rightDelta = 0.95;
-    bottomDelta = 0.905;
+    const static int threshold = 75;
 
-    fieldWidth = 30;
-    fieldHeight = 16;
+    int x = 1, y = 1;
+
+    while (true) {
+        QRgb rgb = field.pixel(x, y);
+
+        if (qRed(rgb) <= threshold && qGreen(rgb) <= threshold && qBlue(rgb) <= threshold)
+            break;
+
+        x++;
+        y++;
+    }
+
+    leftDelta = (double)(x + 2) / field.width();
+    topDelta = (double)(y + 2) / field.height();
+    rightDelta = 1 - leftDelta;
+    bottomDelta = 1 - topDelta;
+}
+
+void MinerWindow::detectFieldDimensions() {
+    const static int threshold = 75;
+
+    int x = 5, y = 5;
+
+    while (true) {
+        QRgb rgb = field.pixel(x, y);
+
+        if (qRed(rgb) <= threshold && qGreen(rgb) <= threshold && qBlue(rgb) <= threshold)
+            break;
+
+        x++;
+        y++;
+    }
+
+    fieldWidth = field.width() / (x + 1);
+    fieldHeight = field.height() / (y + 1);
 
     map.resize(fieldWidth);
 
@@ -191,6 +221,9 @@ void MinerWindow::takeScreenshot() {
     int h = field.height() * bottomDelta - top;
 
     field = field.copy(left, top, w, h);
+
+    if (fieldWidth == 0)
+        detectFieldDimensions();
 
     iconWidth = (double)field.width() / fieldWidth;
     iconHeight = (double)field.height() / fieldHeight;
@@ -383,7 +416,7 @@ void MinerWindow::doubleClick(int x, int y) {
 }
 
 void MinerWindow::moveCursor(int x, int y) {
-    POINT p = {(int)(clientWidth * 0.05 + x * iconWidth + iconWidth / 2), (int)(clientHeight * 0.085 + y * iconHeight + iconHeight / 2)};
+    POINT p = {(int)(clientWidth * leftDelta + x * iconWidth + iconWidth / 2), (int)(clientHeight * topDelta + y * iconHeight + iconHeight / 2)};
     ClientToScreen(hWnd, &p);
     SetCursorPos(p.x, p.y);
 
