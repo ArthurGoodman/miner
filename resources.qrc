@@ -1,0 +1,43 @@
+<RCC>
+    <qresource prefix="/">
+        <file>data/0.bmp</file>
+        <file>data/1.bmp</file>
+        <file>data/2.bmp</file>
+        <file>data/3.bmp</file>
+        <file>data/4.bmp</file>
+        <file>data/5.bmp</file>
+        <file>data/6.bmp</file>
+        <file>data/7.bmp</file>
+        <file>data/8.bmp</file>
+        <file>data/9.bmp</file>
+        <file>data/10.bmp</file>
+        <file>data/11.bmp</file>
+        <file>data/12.bmp</file>
+        <file>data/13.bmp</file>
+        <file>data/14.bmp</file>
+        <file>data/15.bmp</file>
+        <file>data/16.bmp</file>
+        <file>data/17.bmp</file>
+        <file>data/18.bmp</file>
+        <file>data/19.bmp</file>
+        <file>data/20.bmp</file>
+        <file>data/21.bmp</file>
+        <file>data/22.bmp</file>
+        <file>data/23.bmp</file>
+        <file>data/24.bmp</file>
+        <file>data/25.bmp</file>
+        <file>data/26.bmp</file>
+        <file>data/27.bmp</file>
+        <file>data/28.bmp</file>
+        <file>data/29.bmp</file>
+        <file>data/30.bmp</file>
+        <file>data/31.bmp</file>
+        <file>data/32.bmp</file>
+        <file>data/33.bmp</file>
+        <file>data/34.bmp</file>
+        <file>data/35.bmp</file>
+        <file>data/36.bmp</file>
+        <file>data/37.bmp</file>
+        <file>data/38.bmp</file>
+    </qresource>
+</RCC>

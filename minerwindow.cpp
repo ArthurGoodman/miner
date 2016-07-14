@@ -62,7 +62,7 @@ void MinerWindow::init() {
     icons.reserve(12);
 
     for (int i = 0; i < 12; i++)
-        icons << QImage("data/" + QString::number(i * 3 + 1) + ".bmp");
+        icons << QImage(":/data/" + QString::number(i * 3 + 1) + ".bmp");
 
     map.resize(fieldWidth);
 
@@ -109,7 +109,7 @@ void MinerWindow::trainNetwork() {
         std::vector<std::vector<double>> data;
 
         for (uint i = 0; i < 36; i++)
-            data.push_back(processImage(QImage("data/" + QString::number(i) + ".bmp").scaled(trainWidth, trainHeight, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)));
+            data.push_back(processImage(QImage(":/data/" + QString::number(i) + ".bmp").scaled(trainWidth, trainHeight, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)));
 
         std::vector<Network::Example> examples;
 
@@ -250,23 +250,27 @@ void MinerWindow::process() {
         return;
     }
 
-    if (points.isEmpty()) {
-        qDebug() << "Random guess...";
-        QPoint p = closed[qrand() % closed.size()];
-        leftClick(p.x(), p.y());
-        return;
-    }
-
     foreach (QPoint point, points)
         placeFlags(point.x(), point.y());
+
+    bool opened = false;
 
     for (int x = 0; x < fieldWidth; x++)
         for (int y = 0; y < fieldHeight; y++)
             if (map[x][y] >= One && map[x][y] <= Eight) {
                 int s = sumOfNeighbors(x, y, Closed);
-                if (s > 0 && sumOfNeighbors(x, y, Flag) == map[x][y] + 1)
+                if (s > 0 && sumOfNeighbors(x, y, Flag) == map[x][y] + 1) {
+                    opened = true;
                     doubleClick(x, y);
+                }
             }
+
+    if (points.isEmpty() && !opened) {
+        qDebug() << "Random guess...";
+        QPoint p = closed[qrand() % closed.size()];
+        leftClick(p.x(), p.y());
+        return;
+    }
 }
 
 void MinerWindow::leftClick(int x, int y) {

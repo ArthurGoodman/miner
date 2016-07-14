@@ -11,3 +11,6 @@ SOURCES += \
 
 HEADERS += \
     minerwindow.h
+
+RESOURCES += \
+    resources.qrc
