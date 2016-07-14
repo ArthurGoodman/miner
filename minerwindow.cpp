@@ -53,9 +53,9 @@ void MinerWindow::paintEvent(QPaintEvent *) {
 void MinerWindow::init() {
     hWnd = FindWindow(L"Minesweeper", 0);
 
-    icons.reserve(11);
+    icons.reserve(12);
 
-    for (int i = 0; i < 11; i++)
+    for (int i = 0; i < 12; i++)
         icons << QImage("data/" + QString::number(i * 3 + 1) + ".bmp");
 
     map.resize(fieldWidth);
@@ -90,9 +90,9 @@ void MinerWindow::trainNetwork() {
     std::vector<Network::Example> examples;
 
     for (uint i = 0; i < data.size(); i++)
-        examples.push_back(Network::Example(data[i], i < 33 ? i / 3 : 10));
+        examples.push_back(Network::Example(data[i], i < 36 ? i / 3 : 11));
 
-    net = new Network({trainWidth * trainHeight * 3, 24, 11});
+    net = new Network({trainWidth * trainHeight * 3, 24, 12});
 
     net->setLearningRate(0.01);
     net->setMomentum(0.1);
@@ -130,28 +130,55 @@ void MinerWindow::recognize() {
 
     for (int i = 0; i < fieldWidth; i++)
         for (int j = 0; j < fieldHeight; j++) {
-
             int xc = i * iconWidth + iconWidth / 2;
             int yc = j * iconHeight + iconHeight / 2;
 
             int x = xc;
             int y = yc;
 
-            const static int threshold = 90;
+            const static int threshold = 75;
 
-            while (true) {
+            while (x > 0) {
                 QRgb rgb = field.pixel(x, yc);
                 if (qRed(rgb) <= threshold && qGreen(rgb) <= threshold && qBlue(rgb) <= threshold)
                     break;
                 x--;
             }
 
-            while (true) {
+            while (y > 0) {
                 QRgb rgb = field.pixel(xc, y);
                 if (qRed(rgb) <= threshold && qGreen(rgb) <= threshold && qBlue(rgb) <= threshold)
                     break;
                 y--;
             }
+
+            // int x = xc;
+            // QRgb rgb = field.pixel(xc, yc);
+            // int minSum = qRed(rgb) + qGreen(rgb) + qBlue(rgb);
+
+            // for (int dx = -1; dx >= -iconWidth * 0.75 && dx >= -xc; dx--) {
+            //     QRgb rgb = field.pixel(xc + dx, yc);
+            //     int sum = qRed(rgb) + qGreen(rgb) + qBlue(rgb);
+
+            //     if (sum < minSum) {
+            //         x = xc + dx;
+            //         minSum = sum;
+            //     }
+            // }
+
+            // int y = yc;
+            // rgb = field.pixel(xc, yc);
+            // minSum = qRed(rgb) + qGreen(rgb) + qBlue(rgb);`
+
+            // for (int dy = -1; dy >= -iconHeight * 0.75 && dy >= -yc; dy--) {
+            //     QRgb rgb = field.pixel(xc, yc + dy);
+            //     int sum = qRed(rgb) + qGreen(rgb) + qBlue(rgb);
+
+            //     if (sum < minSum) {
+            //         y = yc + dy;
+            //         minSum = sum;
+            //     }
+            // }
 
             QImage icon = field.copy(x + 1, y + 1, iconWidth - 2, iconHeight - 2).scaled(trainWidth, trainHeight, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 
