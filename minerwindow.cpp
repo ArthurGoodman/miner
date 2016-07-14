@@ -8,7 +8,7 @@ MinerWindow::MinerWindow() {
 
     startTimer(100);
 
-    showMinimized();
+    start();
 }
 
 MinerWindow::~MinerWindow() {
@@ -16,14 +16,17 @@ MinerWindow::~MinerWindow() {
 }
 
 void MinerWindow::timerEvent(QTimerEvent *) {
-    if (GetKeyState(VK_ESCAPE) & 0xff00) {
-        qApp->quit();
-        return;
-    }
+    // if (GetKeyState(VK_ESCAPE) & 0xff00) {
+    //     qApp->quit();
+    //     return;
+    // }
 
     takeScreenshot();
     recognize();
-    process();
+
+    if (run)
+        process();
+
     update();
 }
 
@@ -34,7 +37,7 @@ void MinerWindow::keyPressEvent(QKeyEvent *e) {
         break;
 
     case Qt::Key_Space:
-        leftClick(29, 15);
+        start();
         break;
     }
 }
@@ -69,6 +72,11 @@ void MinerWindow::init() {
     }
 }
 
+void MinerWindow::start() {
+    SetForegroundWindow(hWnd);
+    run = true;
+}
+
 std::vector<double> MinerWindow::processImage(const QImage &image) {
     std::vector<double> result;
 
@@ -85,27 +93,36 @@ std::vector<double> MinerWindow::processImage(const QImage &image) {
 }
 
 void MinerWindow::trainNetwork() {
-    std::vector<std::vector<double>> data;
+    if (!QFile::exists("network")) {
+        qDebug() << "Training network...";
 
-    for (uint i = 0; i < 36; i++)
-        data.push_back(processImage(QImage("data/" + QString::number(i) + ".bmp").scaled(trainWidth, trainHeight, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)));
+        net = new Network({trainWidth * trainHeight * 3, 24, 12});
 
-    std::vector<Network::Example> examples;
+        net->setLearningRate(0.01);
+        net->setMomentum(0.1);
+        net->setL2Decay(0);
+        net->setMaxLoss(1e-2);
+        net->setMaxEpochs(1000);
+        net->setBatchSize(1);
+        net->setVerbose(false);
 
-    for (uint i = 0; i < data.size(); i++)
-        examples.push_back(Network::Example(data[i], i < 36 ? i / 3 : 11));
+        std::vector<std::vector<double>> data;
 
-    net = new Network({trainWidth * trainHeight * 3, 24, 12});
+        for (uint i = 0; i < 36; i++)
+            data.push_back(processImage(QImage("data/" + QString::number(i) + ".bmp").scaled(trainWidth, trainHeight, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)));
 
-    net->setLearningRate(0.01);
-    net->setMomentum(0.1);
-    net->setL2Decay(0);
-    net->setMaxLoss(1e-2);
-    net->setMaxEpochs(1000);
-    net->setBatchSize(1);
-    net->setVerbose(false);
+        std::vector<Network::Example> examples;
 
-    net->train(examples);
+        for (uint i = 0; i < data.size(); i++)
+            examples.push_back(Network::Example(data[i], i < 36 ? i / 3 : 11));
+
+        net->train(examples);
+
+        net->saveToFile("network");
+    } else {
+        net = new Network;
+        *net = Network::loadFromFile("network");
+    }
 }
 
 void MinerWindow::takeScreenshot() {
@@ -163,13 +180,13 @@ void MinerWindow::recognize() {
             // int minSum = qRed(rgb) + qGreen(rgb) + qBlue(rgb);
 
             // for (int dx = -1; dx >= -iconWidth * 0.75 && dx >= -xc; dx--) {
-            //     QRgb rgb = field.pixel(xc + dx, yc);
-            //     int sum = qRed(rgb) + qGreen(rgb) + qBlue(rgb);
+            //  QRgb rgb = field.pixel(xc + dx, yc);
+            //  int sum = qRed(rgb) + qGreen(rgb) + qBlue(rgb);
 
-            //     if (sum < minSum) {
-            //         x = xc + dx;
-            //         minSum = sum;
-            //     }
+            //  if (sum < minSum) {
+            //      x = xc + dx;
+            //      minSum = sum;
+            //  }
             // }
 
             // int y = yc;
@@ -177,13 +194,13 @@ void MinerWindow::recognize() {
             // minSum = qRed(rgb) + qGreen(rgb) + qBlue(rgb);`
 
             // for (int dy = -1; dy >= -iconHeight * 0.75 && dy >= -yc; dy--) {
-            //     QRgb rgb = field.pixel(xc, yc + dy);
-            //     int sum = qRed(rgb) + qGreen(rgb) + qBlue(rgb);
+            //  QRgb rgb = field.pixel(xc, yc + dy);
+            //  int sum = qRed(rgb) + qGreen(rgb) + qBlue(rgb);
 
-            //     if (sum < minSum) {
-            //         y = yc + dy;
-            //         minSum = sum;
-            //     }
+            //  if (sum < minSum) {
+            //      y = yc + dy;
+            //      minSum = sum;
+            //  }
             // }
 
             QImage icon = field.copy(x + 1, y + 1, iconWidth - 2, iconHeight - 2).scaled(trainWidth, trainHeight, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
@@ -205,7 +222,7 @@ void MinerWindow::process() {
         for (int y = 0; y < fieldHeight; y++) {
             if (map[x][y] == Bomb) {
                 qDebug() << "Fail.";
-                qApp->quit();
+                run = false;
                 return;
             }
 
@@ -224,7 +241,7 @@ void MinerWindow::process() {
 
     if (allOpen) {
         qDebug() << "Success!";
-        qApp->quit();
+        run = false;
         return;
     }
 

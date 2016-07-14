@@ -37,6 +37,8 @@ class MinerWindow : public QWidget {
         Closed
     };
 
+    bool run;
+
 public:
     MinerWindow();
     ~MinerWindow();
@@ -48,6 +50,7 @@ protected:
 
 private:
     void init();
+    void start();
     std::vector<double> processImage(const QImage &image);
     void trainNetwork();
     void takeScreenshot();
