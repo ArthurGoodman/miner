@@ -54,6 +54,7 @@ private:
     std::vector<double> processImage(const QImage &image);
     void trainNetwork();
     void takeScreenshot();
+    void cropField();
     void recognize();
     void process();
     void leftClick(int x, int y);
@@ -61,5 +62,6 @@ private:
     void doubleClick(int x, int y);
     void moveCursor(int x, int y);
     int sumOfNeighbors(int x, int y, Cell cell);
+    bool isNearDigit(int x, int y);
     void placeFlags(int x, int y);
 };
