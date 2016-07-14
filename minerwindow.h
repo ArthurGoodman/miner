@@ -5,9 +5,6 @@
 #include "network.h"
 
 class MinerWindow : public QWidget {
-    const int fieldWidth = 30;
-    const int fieldHeight = 16;
-
     const int trainWidth = 20;
     const int trainHeight = 20;
 
@@ -15,12 +12,14 @@ class MinerWindow : public QWidget {
     QVector<QImage> icons;
     Network *net;
 
+    int fieldWidth = 0, fieldHeight;
     double iconWidth, iconHeight;
+    double leftDelta, topDelta, rightDelta, bottomDelta;
 
     QVector<QVector<int>> map;
 
     HWND hWnd;
-    int wndX, wndY, clientWidth, clientHeight;
+    int clientWidth, clientHeight;
 
     enum Cell {
         One,
@@ -37,7 +36,7 @@ class MinerWindow : public QWidget {
         Closed
     };
 
-    bool run;
+    bool run = false;
 
 public:
     MinerWindow();
@@ -49,12 +48,11 @@ protected:
     void paintEvent(QPaintEvent *e);
 
 private:
-    void init();
     void start();
     std::vector<double> processImage(const QImage &image);
     void trainNetwork();
+    void detectField();
     void takeScreenshot();
-    void cropField();
     void recognize();
     void process();
     void leftClick(int x, int y);

@@ -1,10 +1,10 @@
 #include "minerwindow.h"
 
-MinerWindow::MinerWindow()
-    : run(false) {
+MinerWindow::MinerWindow() {
     qsrand(QTime::currentTime().msec());
 
-    init();
+    hWnd = FindWindow(L"Minesweeper", 0);
+
     trainNetwork();
 
     startTimer(100);
@@ -51,25 +51,6 @@ void MinerWindow::paintEvent(QPaintEvent *) {
             p.drawImage(QPointF(i * iconWidth, j * iconHeight), icons[map[i][j]].scaled(iconWidth, iconHeight, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
 }
 
-void MinerWindow::init() {
-    hWnd = FindWindow(L"Minesweeper", 0);
-
-    RECT r;
-    GetClientRect(hWnd, &r);
-
-    wndX = r.left;
-    wndY = r.top;
-
-    map.resize(fieldWidth);
-
-    for (int i = 0; i < map.size(); i++) {
-        map[i].resize(fieldHeight);
-        map[i].fill(0);
-    }
-
-    icons.resize(12);
-}
-
 void MinerWindow::start() {
     SetForegroundWindow(hWnd);
     run = true;
@@ -105,6 +86,8 @@ void MinerWindow::trainNetwork() {
         net->setVerbose(false);
 
         std::vector<Network::Example> examples;
+
+        icons.resize(12);
 
         QFile file(":/data/data.txt");
         file.open(QFile::ReadOnly | QFile::Text);
@@ -144,6 +127,8 @@ void MinerWindow::trainNetwork() {
 
         net->saveToFile("network");
     } else {
+        icons.resize(12);
+
         QFile file(":/data/data.txt");
         file.open(QFile::ReadOnly | QFile::Text);
         QTextStream stream(&file);
@@ -171,6 +156,23 @@ void MinerWindow::trainNetwork() {
     }
 }
 
+void MinerWindow::detectField() {
+    leftDelta = 0.05;
+    topDelta = 0.085;
+    rightDelta = 0.95;
+    bottomDelta = 0.905;
+
+    fieldWidth = 30;
+    fieldHeight = 16;
+
+    map.resize(fieldWidth);
+
+    for (int i = 0; i < map.size(); i++) {
+        map[i].resize(fieldHeight);
+        map[i].fill(0);
+    }
+}
+
 void MinerWindow::takeScreenshot() {
     field = QApplication::primaryScreen()->grabWindow((WId)hWnd).toImage();
 
@@ -180,21 +182,20 @@ void MinerWindow::takeScreenshot() {
     clientWidth = field.width();
     clientHeight = field.height();
 
-    cropField();
+    if (fieldWidth == 0)
+        detectField();
 
-    resize(field.size());
-}
-
-void MinerWindow::cropField() {
-    int left = field.width() * 0.05;
-    int top = field.height() * 0.085;
-    int w = field.width() * 0.95 - left;
-    int h = field.height() * 0.905 - top;
+    int left = field.width() * leftDelta;
+    int top = field.height() * topDelta;
+    int w = field.width() * rightDelta - left;
+    int h = field.height() * bottomDelta - top;
 
     field = field.copy(left, top, w, h);
 
     iconWidth = (double)field.width() / fieldWidth;
     iconHeight = (double)field.height() / fieldHeight;
+
+    resize(field.size());
 }
 
 void MinerWindow::recognize() {
