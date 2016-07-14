@@ -20,6 +20,22 @@ class MinerWindow : public QWidget {
     QVector<QVector<int>> map;
 
     HWND hWnd;
+    int wndX, wndY, clientWidth, clientHeight;
+
+    enum Cell {
+        One,
+        Two,
+        Three,
+        Four,
+        Five,
+        Six,
+        Seven,
+        Eight,
+        Flag,
+        Bomb,
+        Open,
+        Closed
+    };
 
 public:
     MinerWindow();
@@ -28,8 +44,6 @@ public:
 protected:
     void timerEvent(QTimerEvent *e);
     void keyPressEvent(QKeyEvent *e);
-    void mousePressEvent(QMouseEvent *e);
-    void mouseDoubleClickEvent(QMouseEvent *e);
     void paintEvent(QPaintEvent *e);
 
 private:
@@ -38,4 +52,11 @@ private:
     void trainNetwork();
     void takeScreenshot();
     void recognize();
+    void process();
+    void leftClick(int x, int y);
+    void rightClick(int x, int y);
+    void doubleClick(int x, int y);
+    void moveCursor(int x, int y);
+    int sumOfNeighbors(int x, int y, Cell cell);
+    void placeFlags(int x, int y);
 };

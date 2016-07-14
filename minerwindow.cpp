@@ -7,6 +7,8 @@ MinerWindow::MinerWindow() {
     trainNetwork();
 
     startTimer(100);
+
+    showMinimized();
 }
 
 MinerWindow::~MinerWindow() {
@@ -14,8 +16,14 @@ MinerWindow::~MinerWindow() {
 }
 
 void MinerWindow::timerEvent(QTimerEvent *) {
+    if (GetKeyState(VK_ESCAPE) & 0xff00) {
+        qApp->quit();
+        return;
+    }
+
     takeScreenshot();
     recognize();
+    process();
     update();
 }
 
@@ -24,22 +32,11 @@ void MinerWindow::keyPressEvent(QKeyEvent *e) {
     case Qt::Key_Escape:
         close();
         break;
-    }
-}
 
-void MinerWindow::mousePressEvent(QMouseEvent *e) {
-    if (e->button() == Qt::LeftButton) {
-        SendMessage(hWnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(0, 0));
-        SendMessage(hWnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(0, 0));
-    } else if (e->button() == Qt::RightButton) {
-        SendMessage(hWnd, WM_RBUTTONDOWN, MK_LBUTTON, MAKELPARAM(0, 0));
-        SendMessage(hWnd, WM_RBUTTONUP, MK_LBUTTON, MAKELPARAM(0, 0));
+    case Qt::Key_Space:
+        leftClick(29, 15);
+        break;
     }
-}
-
-void MinerWindow::mouseDoubleClickEvent(QMouseEvent *e) {
-    if (e->button() == Qt::LeftButton)
-        SendMessage(hWnd, WM_LBUTTONDBLCLK, MK_LBUTTON, MAKELPARAM(0, 0));
 }
 
 void MinerWindow::paintEvent(QPaintEvent *) {
@@ -52,6 +49,12 @@ void MinerWindow::paintEvent(QPaintEvent *) {
 
 void MinerWindow::init() {
     hWnd = FindWindow(L"Minesweeper", 0);
+
+    RECT r;
+    GetClientRect(hWnd, &r);
+
+    wndX = r.left;
+    wndY = r.top;
 
     icons.reserve(12);
 
@@ -110,6 +113,9 @@ void MinerWindow::takeScreenshot() {
 
     if (field.isNull())
         return;
+
+    clientWidth = field.width();
+    clientHeight = field.height();
 
     int left = field.width() * 0.05;
     int top = field.height() * 0.085;
@@ -183,5 +189,123 @@ void MinerWindow::recognize() {
             QImage icon = field.copy(x + 1, y + 1, iconWidth - 2, iconHeight - 2).scaled(trainWidth, trainHeight, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 
             map[i][j] = net->predict(processImage(icon));
+        }
+}
+
+void MinerWindow::process() {
+    if (field.isNull())
+        return;
+
+    QList<QPoint> points;
+    QVector<QPoint> closed;
+
+    bool allClosed = true, allOpen = true;
+
+    for (int x = 0; x < fieldWidth; x++)
+        for (int y = 0; y < fieldHeight; y++) {
+            if (map[x][y] == Bomb) {
+                qDebug() << "Fail.";
+                qApp->quit();
+                return;
+            }
+
+            if (map[x][y] == Closed) {
+                closed << QPoint(x, y);
+                allOpen = false;
+            } else
+                allClosed = false;
+
+            if (map[x][y] >= One && map[x][y] <= Eight) {
+                int s = sumOfNeighbors(x, y, Closed);
+                if (s > 0 && s + sumOfNeighbors(x, y, Flag) == map[x][y] + 1)
+                    points << QPoint(x, y);
+            }
+        }
+
+    if (allOpen) {
+        qDebug() << "Success!";
+        qApp->quit();
+        return;
+    }
+
+    if (allClosed) {
+        leftClick(qrand() % fieldWidth, qrand() % fieldHeight);
+        return;
+    }
+
+    if (points.isEmpty()) {
+        qDebug() << "Random guess...";
+        QPoint p = closed[qrand() % closed.size()];
+        leftClick(p.x(), p.y());
+        return;
+    }
+
+    foreach (QPoint point, points)
+        placeFlags(point.x(), point.y());
+
+    for (int x = 0; x < fieldWidth; x++)
+        for (int y = 0; y < fieldHeight; y++)
+            if (map[x][y] >= One && map[x][y] <= Eight) {
+                int s = sumOfNeighbors(x, y, Closed);
+                if (s > 0 && sumOfNeighbors(x, y, Flag) == map[x][y] + 1)
+                    doubleClick(x, y);
+            }
+}
+
+void MinerWindow::leftClick(int x, int y) {
+    moveCursor(x, y);
+    SendMessage(hWnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(0, 0));
+    SendMessage(hWnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(0, 0));
+}
+
+void MinerWindow::rightClick(int x, int y) {
+    moveCursor(x, y);
+    SendMessage(hWnd, WM_RBUTTONDOWN, MK_LBUTTON, MAKELPARAM(0, 0));
+    SendMessage(hWnd, WM_RBUTTONUP, MK_LBUTTON, MAKELPARAM(0, 0));
+}
+
+void MinerWindow::doubleClick(int x, int y) {
+    moveCursor(x, y);
+    SendMessage(hWnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(0, 0));
+    SendMessage(hWnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(0, 0));
+    SendMessage(hWnd, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(0, 0));
+    SendMessage(hWnd, WM_LBUTTONUP, MK_LBUTTON, MAKELPARAM(0, 0));
+}
+
+void MinerWindow::moveCursor(int x, int y) {
+    POINT p = {(int)(clientWidth * 0.05 + x * iconWidth + iconWidth / 2), (int)(clientHeight * 0.085 + y * iconHeight + iconHeight / 2)};
+    ClientToScreen(hWnd, &p);
+    SetCursorPos(p.x, p.y);
+
+    Sleep(10);
+}
+
+int MinerWindow::sumOfNeighbors(int x, int y, Cell cell) {
+    int sum = 0;
+
+    for (int dx = -1; dx <= 1; dx++)
+        for (int dy = -1; dy <= 1; dy++) {
+            if (dx == 0 && dy == 0)
+                continue;
+
+            if (x + dx >= 0 && x + dx < fieldWidth && y + dy >= 0 && y + dy < fieldHeight)
+                if (map[x + dx][y + dy] == cell)
+                    sum++;
+        }
+
+    return sum;
+}
+
+void MinerWindow::placeFlags(int x, int y) {
+    for (int dx = -1; dx <= 1; dx++)
+        for (int dy = -1; dy <= 1; dy++) {
+            if (dx == 0 && dy == 0)
+                continue;
+
+            if (x + dx >= 0 && x + dx < fieldWidth && y + dy >= 0 && y + dy < fieldHeight)
+                if (map[x + dx][y + dy] == Closed) {
+                    map[x + dx][y + dy] = Flag;
+                    rightClick(x + dx, y + dy);
+                }
         }
 }
