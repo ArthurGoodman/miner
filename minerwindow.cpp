@@ -354,12 +354,12 @@ void MinerWindow::process() {
             }
 
     if (points.isEmpty() && !changed) {
+        qDebug() << "Multisquare algorithm...";
+
         for (int x = 0; x < fieldWidth; x++)
             for (int y = 0; y < fieldHeight; y++)
-                if (sumOfNeighbors(x, y, Closed) > 0)
+                if (map[x][y] >= One && map[x][y] <= Eight && sumOfNeighbors(x, y, Closed) > 0)
                     points << QPoint(x, y);
-
-        qDebug() << "Multisquare algorithm...";
 
         foreach (const QPoint &p, points) {
             int c = sumOfNeighbors(p.x(), p.y(), Closed);
@@ -373,6 +373,9 @@ void MinerWindow::process() {
                     QPoint d(p.x() + dx, p.y() + dy);
 
                     if (map[d.x()][d.y()] >= One && map[d.x()][d.y()] <= Eight) {
+                        if (sumOfNeighbors(d.x(), d.y(), Closed) == 0)
+                            continue;
+
                         int cd = 0;
                         int fd = 0;
 
@@ -406,8 +409,6 @@ void MinerWindow::process() {
 
                             if (closedLeft > 0) {
                                 if (closedLeft > 0 && bombsLeft == 0) {
-                                    changed = true;
-
                                     for (int dx = -1; dx <= 1; dx++)
                                         for (int dy = -1; dy <= 1; dy++) {
                                             if ((dx == 0 && dy == 0) || p.x() + dx < 0 || p.x() + dx >= fieldWidth || p.y() + dy < 0 || p.y() + dy >= fieldHeight)
@@ -416,9 +417,9 @@ void MinerWindow::process() {
                                             if (map[p.x() + dx][p.y() + dy] == Closed && (abs(p.x() + dx - d.x()) > 1 || abs(p.y() + dy - d.y()) > 1))
                                                 leftClick(p.x() + dx, p.y() + dy);
                                         }
-                                } else if (bombsLeft == closedLeft) {
-                                    changed = true;
 
+                                    return;
+                                } else if (bombsLeft == closedLeft) {
                                     for (int dx = -1; dx <= 1; dx++)
                                         for (int dy = -1; dy <= 1; dy++) {
                                             if ((dx == 0 && dy == 0) || p.x() + dx < 0 || p.x() + dx >= fieldWidth || p.y() + dy < 0 || p.y() + dy >= fieldHeight)
@@ -427,6 +428,8 @@ void MinerWindow::process() {
                                             if (map[p.x() + dx][p.y() + dy] == Closed && (abs(p.x() + dx - d.x()) > 1 || abs(p.y() + dy - d.y()) > 1))
                                                 rightClick(p.x() + dx, p.y() + dy);
                                         }
+
+                                    return;
                                 }
                             }
                         }
@@ -434,13 +437,9 @@ void MinerWindow::process() {
                 }
         }
 
-        if (!changed) {
-            // qDebug() << "Random guess...";
-            // QPoint p = closedNearDigits.isEmpty() ? closed[qrand() % closed.size()] : closedNearDigits[qrand() % closedNearDigits.size()];
-            // leftClick(p.x(), p.y());
-
-            run = false;
-        }
+        qDebug() << "Random guess...";
+        QPoint p = closedNearDigits.isEmpty() ? closed[qrand() % closed.size()] : closedNearDigits[qrand() % closedNearDigits.size()];
+        leftClick(p.x(), p.y());
     }
 }
 
