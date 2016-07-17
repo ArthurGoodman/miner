@@ -341,57 +341,106 @@ void MinerWindow::process() {
     foreach (const QPoint &p, points)
         placeFlags(p.x(), p.y());
 
-    bool opened = false;
+    bool changed = false;
 
     for (int x = 0; x < fieldWidth; x++)
         for (int y = 0; y < fieldHeight; y++)
             if (map[x][y] >= One && map[x][y] <= Eight) {
                 int s = sumOfNeighbors(x, y, Closed);
                 if (s > 0 && sumOfNeighbors(x, y, Flag) == map[x][y] + 1) {
-                    opened = true;
+                    changed = true;
                     doubleClick(x, y);
                 }
             }
 
-    if (points.isEmpty() && !opened) {
-        // for (int x = 0; x < fieldWidth; x++)
-        //     for (int y = 0; y < fieldHeight; y++)
-        //         if (sumOfNeighbors(x, y, Closed) > 0)
-        //             points << QPoint(x, y);
+    if (points.isEmpty() && !changed) {
+        for (int x = 0; x < fieldWidth; x++)
+            for (int y = 0; y < fieldHeight; y++)
+                if (sumOfNeighbors(x, y, Closed) > 0)
+                    points << QPoint(x, y);
 
-        // foreach (const QPoint &p, points) {
-        //     int f = sumOfNeighbors(p.x(), p.y(), Flag);
+        qDebug() << "Multisquare algorithm...";
 
-        //     for (int dx = -1; dx <= 1; dx++)
-        //         for (int dy = -1; dy <= 1; dy++) {
-        //             if (dx == 0 && dy == 0)
-        //                 continue;
+        foreach (const QPoint &p, points) {
+            int c = sumOfNeighbors(p.x(), p.y(), Closed);
+            int f = sumOfNeighbors(p.x(), p.y(), Flag);
 
-        //             QPoint d(p.x() + dx, p.y() + dy);
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++) {
+                    if ((dx == 0 && dy == 0) || p.x() + dx < 0 || p.x() + dx >= fieldWidth || p.y() + dy < 0 || p.y() + dy >= fieldHeight)
+                        continue;
 
-        //             if (map[d.x()][d.y()] >= One && map[d.x()][d.y()] <= Eight) {
-        //                 int cd = 0;
-        //                 int fd = 0;
+                    QPoint d(p.x() + dx, p.y() + dy);
 
-        //                 for (int dx = -1; dx <= 1; dx++)
-        //                     for (int dy = -1; dy <= 1; dy++) {
-        //                         if ((dx == 0 && dy == 0) || abs(p.x() - d.x() - dx) <= 1 || abs(p.y() - d.y() - dy) <= 1)
-        //                             continue;
+                    if (map[d.x()][d.y()] >= One && map[d.x()][d.y()] <= Eight) {
+                        int cd = 0;
+                        int fd = 0;
 
-        //                         if (map[d.x() + dx][d.y() + dy] == Closed)
-        //                             cd++;
-        //                         else if (map[d.x() + dx][d.y() + dy] == Flag)
-        //                             fd++;
-        //                     }
+                        bool allClosedNear = true;
 
-        //                 if(map[p.x()][p.y()] + 1 - f + fd)
-        //             }
-        //         }
-        // }
+                        for (int dx = -1; dx <= 1; dx++) {
+                            for (int dy = -1; dy <= 1; dy++) {
+                                if ((dx == 0 && dy == 0) || d.x() + dx < 0 || d.x() + dx >= fieldWidth || d.y() + dy < 0 || d.y() + dy >= fieldHeight)
+                                    continue;
 
-        qDebug() << "Random guess...";
-        QPoint p = closedNearDigits.isEmpty() ? closed[qrand() % closed.size()] : closedNearDigits[qrand() % closedNearDigits.size()];
-        leftClick(p.x(), p.y());
+                                if (map[d.x() + dx][d.y() + dy] == Flag)
+                                    fd++;
+                                else if (map[d.x() + dx][d.y() + dy] == Closed) {
+                                    cd++;
+
+                                    if (abs(p.x() - d.x() - dx) > 1 || abs(p.y() - d.y() - dy) > 1) {
+                                        allClosedNear = false;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (!allClosedNear)
+                                break;
+                        }
+
+                        if (allClosedNear) {
+                            int closedLeft = c - cd;
+                            int bombsInIntersection = map[d.x()][d.y()] + 1 - fd;
+                            int bombsLeft = map[p.x()][p.y()] + 1 - f - bombsInIntersection;
+
+                            if (closedLeft > 0) {
+                                if (closedLeft > 0 && bombsLeft == 0) {
+                                    changed = true;
+
+                                    for (int dx = -1; dx <= 1; dx++)
+                                        for (int dy = -1; dy <= 1; dy++) {
+                                            if ((dx == 0 && dy == 0) || p.x() + dx < 0 || p.x() + dx >= fieldWidth || p.y() + dy < 0 || p.y() + dy >= fieldHeight)
+                                                continue;
+
+                                            if (map[p.x() + dx][p.y() + dy] == Closed && (abs(p.x() + dx - d.x()) > 1 || abs(p.y() + dy - d.y()) > 1))
+                                                leftClick(p.x() + dx, p.y() + dy);
+                                        }
+                                } else if (bombsLeft == closedLeft) {
+                                    changed = true;
+
+                                    for (int dx = -1; dx <= 1; dx++)
+                                        for (int dy = -1; dy <= 1; dy++) {
+                                            if ((dx == 0 && dy == 0) || p.x() + dx < 0 || p.x() + dx >= fieldWidth || p.y() + dy < 0 || p.y() + dy >= fieldHeight)
+                                                continue;
+
+                                            if (map[p.x() + dx][p.y() + dy] == Closed && (abs(p.x() + dx - d.x()) > 1 || abs(p.y() + dy - d.y()) > 1))
+                                                rightClick(p.x() + dx, p.y() + dy);
+                                        }
+                                }
+                            }
+                        }
+                    }
+                }
+        }
+
+        if (!changed) {
+            // qDebug() << "Random guess...";
+            // QPoint p = closedNearDigits.isEmpty() ? closed[qrand() % closed.size()] : closedNearDigits[qrand() % closedNearDigits.size()];
+            // leftClick(p.x(), p.y());
+
+            run = false;
+        }
     }
 }
 
@@ -428,12 +477,11 @@ int MinerWindow::sumOfNeighbors(int x, int y, Cell cell) {
 
     for (int dx = -1; dx <= 1; dx++)
         for (int dy = -1; dy <= 1; dy++) {
-            if (dx == 0 && dy == 0)
+            if ((dx == 0 && dy == 0) || x + dx < 0 || x + dx >= fieldWidth || y + dy < 0 || y + dy >= fieldHeight)
                 continue;
 
-            if (x + dx >= 0 && x + dx < fieldWidth && y + dy >= 0 && y + dy < fieldHeight)
-                if (map[x + dx][y + dy] == cell)
-                    sum++;
+            if (map[x + dx][y + dy] == cell)
+                sum++;
         }
 
     return sum;
@@ -442,12 +490,11 @@ int MinerWindow::sumOfNeighbors(int x, int y, Cell cell) {
 bool MinerWindow::isNearDigit(int x, int y) {
     for (int dx = -1; dx <= 1; dx++)
         for (int dy = -1; dy <= 1; dy++) {
-            if (dx == 0 && dy == 0)
+            if ((dx == 0 && dy == 0) || x + dx < 0 || x + dx >= fieldWidth || y + dy < 0 || y + dy >= fieldHeight)
                 continue;
 
-            if (x + dx >= 0 && x + dx < fieldWidth && y + dy >= 0 && y + dy < fieldHeight)
-                if (map[x + dx][y + dy] >= One && map[x + dx][y + dy] <= Eight)
-                    return true;
+            if (map[x + dx][y + dy] >= One && map[x + dx][y + dy] <= Eight)
+                return true;
         }
 
     return false;
@@ -456,13 +503,12 @@ bool MinerWindow::isNearDigit(int x, int y) {
 void MinerWindow::placeFlags(int x, int y) {
     for (int dx = -1; dx <= 1; dx++)
         for (int dy = -1; dy <= 1; dy++) {
-            if (dx == 0 && dy == 0)
+            if ((dx == 0 && dy == 0) || x + dx < 0 || x + dx >= fieldWidth || y + dy < 0 || y + dy >= fieldHeight)
                 continue;
 
-            if (x + dx >= 0 && x + dx < fieldWidth && y + dy >= 0 && y + dy < fieldHeight)
-                if (map[x + dx][y + dy] == Closed) {
-                    map[x + dx][y + dy] = Flag;
-                    rightClick(x + dx, y + dy);
-                }
+            if (map[x + dx][y + dy] == Closed) {
+                map[x + dx][y + dy] = Flag;
+                rightClick(x + dx, y + dy);
+            }
         }
 }
